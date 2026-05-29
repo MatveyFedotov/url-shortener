@@ -15,18 +15,15 @@ import (
 func main() {
 	router := gin.Default()
 
-	var store interface {
-		Save(string, string) error
-		Get(string) (string, error)
-		FindByURL(string) (string, error)
-		Exists(string) (bool, error)
-	}
+	var store service.Storage
 
 	storageType := os.Getenv("STORAGE")
 
 	if storageType == "postgres" {
-		conn := "postgres://postgres:postgres@postgres:5432/shortener"
-
+		conn := os.Getenv("POSTGRES_URL")
+		if conn == "" {
+			log.Fatal("POSTGRES_URL is not set")
+		}
 		pg, err := postgres.New(conn)
 		if err != nil {
 			log.Fatal(err)

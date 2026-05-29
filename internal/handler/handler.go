@@ -23,6 +23,9 @@ type CreateResponse struct {
 	Code     string `json:"code"`
 	ShortURL string `json:"short_url"`
 }
+type GetResponse struct {
+	URL string `json:"url"`
+}
 
 func (h *Handler) Create(c *gin.Context) {
 	var req CreateRequest
@@ -75,5 +78,7 @@ func (h *Handler) Get(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusMovedPermanently, originalURL)
+	c.JSON(http.StatusOK, GetResponse{
+		URL: originalURL,
+	})
 }

@@ -1,8 +1,10 @@
 package storage
 
+import "errors"
+
 type Storage interface {
-	Save(url string, code string) error
+	SaveIfAbsent(url string, code string) (string, error)
 	Get(code string) (string, error)
-	FindByURL(url string) (string, error)
-	Exists(code string) (bool, error)
 }
+
+var ErrCodeExists = errors.New("code already exists")

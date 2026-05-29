@@ -3,6 +3,7 @@ package memory
 import (
 	"errors"
 	"sync"
+	"url-shortener/internal/storage"
 )
 
 type MemoryStorage struct {
@@ -18,14 +19,20 @@ func New() *MemoryStorage {
 	}
 }
 
-func (m *MemoryStorage) Save(url string, code string) error {
+func (m *MemoryStorage) SaveIfAbsent(url string, code string) (string, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+	if existingCode, ok := m.urlToCode[url]; ok {
+		return existingCode, nil
+	}
 
+	if _, ok := m.codeToURL[code]; ok {
+		return "", storage.ErrCodeExists
+	}
 	m.codeToURL[code] = url
 	m.urlToCode[url] = code
 
-	return nil
+	return code, nil
 }
 
 func (m *MemoryStorage) Get(code string) (string, error) {
@@ -38,25 +45,4 @@ func (m *MemoryStorage) Get(code string) (string, error) {
 	}
 
 	return url, nil
-}
-
-func (m *MemoryStorage) FindByURL(url string) (string, error) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-
-	code, ok := m.urlToCode[url]
-	if !ok {
-		return "", errors.New("not found")
-	}
-
-	return code, nil
-}
-
-func (m *MemoryStorage) Exists(code string) (bool, error) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-
-	_, ok := m.codeToURL[code]
-
-	return ok, nil
 }

@@ -2,16 +2,13 @@ package service
 
 import (
 	"errors"
-	"net/url"
-
 	"url-shortener/internal/generator"
+	"url-shortener/internal/storage"
 )
 
 type Storage interface {
-	Save(url string, code string) error
 	Get(code string) (string, error)
-	FindByURL(url string) (string, error)
-	Exists(code string) (bool, error)
+	SaveIfAbsent(url string, code string) (string, error)
 }
 
 type Service struct {
@@ -25,37 +22,19 @@ func New(storage Storage) *Service {
 }
 
 func (s *Service) CreateShortURL(originalURL string) (string, error) {
-	_, err := url.ParseRequestURI(originalURL)
-	if err != nil {
-		return "", errors.New("invalid url")
-	}
-
-	existingCode, err := s.storage.FindByURL(originalURL)
-	if err == nil {
-		return existingCode, nil
-	}
-
-	var code string
-
 	for {
-		code = generator.GenerateCode(10)
+		code := generator.GenerateCode(10)
 
-		exists, err := s.storage.Exists(code)
+		savedCode, err := s.storage.SaveIfAbsent(originalURL, code)
+		if errors.Is(err, storage.ErrCodeExists) {
+			continue
+		}
 		if err != nil {
 			return "", err
 		}
 
-		if !exists {
-			break
-		}
+		return savedCode, nil
 	}
-
-	err = s.storage.Save(originalURL, code)
-	if err != nil {
-		return "", err
-	}
-
-	return code, nil
 }
 
 func (s *Service) GetOriginalURL(code string) (string, error) {

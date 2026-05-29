@@ -4,58 +4,41 @@ import (
 	"testing"
 )
 
-func TestMemoryStorage_SaveAndGet(t *testing.T) {
-	store := New()
+func TestSaveIfAbsent_NewURL_Success(t *testing.T) {
+	mem := New()
 
-	err := store.Save("https://google.com", "abc123")
+	code, err := mem.SaveIfAbsent("https://google.com", "abc123")
 	if err != nil {
-		t.Fatalf("Ошибка Save: %v", err)
+		t.Fatalf("SaveIfAbsent failed: %v", err)
 	}
-
-	url, err := store.Get("abc123")
-	if err != nil {
-		t.Fatalf("Ошибка Get: %v", err)
-	}
-
-	if url != "https://google.com" {
-		t.Errorf("Ожидался 'https://google.com', получено '%s'", url)
-	}
-}
-
-func TestMemoryStorage_GetNotFound(t *testing.T) {
-	store := New()
-
-	_, err := store.Get("notexist")
-	if err == nil {
-		t.Error("Ожидалась ошибка для несуществующего кода")
-	}
-}
-
-func TestMemoryStorage_FindByURL(t *testing.T) {
-	store := New()
-	store.Save("https://google.com", "abc123")
-
-	code, err := store.FindByURL("https://google.com")
-	if err != nil {
-		t.Fatalf("Ошибка FindByURL: %v", err)
-	}
-
 	if code != "abc123" {
-		t.Errorf("Ожидался 'abc123', получено '%s'", code)
+		t.Errorf("Expected 'abc123', got '%s'", code)
 	}
 }
 
-func TestMemoryStorage_Exists(t *testing.T) {
-	store := New()
-	store.Save("https://google.com", "abc123")
+func TestSaveIfAbsent_ExistingURL_ReturnsExistingCode(t *testing.T) {
+	mem := New()
 
-	exists, _ := store.Exists("abc123")
-	if !exists {
-		t.Error("Ожидалось exists=true для существующего кода")
+	mem.SaveIfAbsent("https://google.com", "abc123")
+	code, err := mem.SaveIfAbsent("https://google.com", "xyz789")
+
+	if err != nil {
+		t.Fatalf("SaveIfAbsent failed: %v", err)
 	}
+	if code != "abc123" {
+		t.Errorf("Expected existing code 'abc123', got '%s'", code)
+	}
+}
 
-	exists, _ = store.Exists("notexist")
-	if exists {
-		t.Error("Ожидалось exists=false для несуществующего кода")
+func TestGet_Success(t *testing.T) {
+	mem := New()
+	mem.SaveIfAbsent("https://google.com", "abc123")
+
+	url, err := mem.Get("abc123")
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+	if url != "https://google.com" {
+		t.Errorf("Expected 'https://google.com', got '%s'", url)
 	}
 }

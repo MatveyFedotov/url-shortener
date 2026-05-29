@@ -20,14 +20,22 @@ func New(conn string) (*PostgresStorage, error) {
 	return &PostgresStorage{db: db}, nil
 }
 
-func (p *PostgresStorage) Save(url string, code string) error {
-	_, err := p.db.Exec(context.Background(),
-		"INSERT INTO links (url, code) VALUES ($1, $2)",
-		url, code,
-	)
-	return err
-}
+func (p *PostgresStorage) SaveIfAbsent(url string, code string) (string, error) {
+	var savedCode string
 
+	err := p.db.QueryRow(context.Background(), `
+  INSERT INTO links (url, code)
+  VALUES ($1, $2)
+  ON CONFLICT (url) DO UPDATE SET url = links.url
+  RETURNING code
+ `, url, code).Scan(&savedCode)
+
+	if err != nil {
+		return "", err
+	}
+
+	return savedCode, nil
+}
 func (p *PostgresStorage) Get(code string) (string, error) {
 	var url string
 
@@ -41,30 +49,4 @@ func (p *PostgresStorage) Get(code string) (string, error) {
 	}
 
 	return url, nil
-}
-
-func (p *PostgresStorage) FindByURL(url string) (string, error) {
-	var code string
-
-	err := p.db.QueryRow(context.Background(),
-		"SELECT code FROM links WHERE url=$1",
-		url,
-	).Scan(&code)
-
-	if err != nil {
-		return "", errors.New("not found")
-	}
-
-	return code, nil
-}
-
-func (p *PostgresStorage) Exists(code string) (bool, error) {
-	var exists bool
-
-	err := p.db.QueryRow(context.Background(),
-		"SELECT EXISTS(SELECT 1 FROM links WHERE code=$1)",
-		code,
-	).Scan(&exists)
-
-	return exists, err
 }
